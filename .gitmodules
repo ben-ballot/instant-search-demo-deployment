@@ -1,0 +1,3 @@
+[submodule "instant-search-demo"]
+	path = instant-search-demo
+	url = git@github.com:algolia/instant-search-demo.git
