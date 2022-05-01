@@ -40,6 +40,11 @@ build-dev: APP_REVISION=dev
 build-dev: APP_VERSION=dev
 build-dev: build
 
+build-minikube-dev: DATE=dev
+build-minikube-dev: APP_REVISION=dev
+build-minikube-dev: APP_VERSION=dev
+build-minikube-dev: build-minikube
+
 push: build
 	docker push $(IMAGE):$(APP_VERSION)
 
