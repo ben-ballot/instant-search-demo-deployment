@@ -11,11 +11,14 @@ USER 1000
 RUN npm install
 CMD ["npm", "start"]
 
+ARG DATE=dev
+ARG REVISION=${IMAGE_TAG}
+ARG VERSION=${VERSION}
 LABEL org.opencontainers.image.created="${DATE}"
 LABEL org.opencontainers.image.url="https://github.com/algolia/instant-search-demo"
 LABEL org.opencontainers.image.source="https://github.com/algolia/instant-search-demo"
-LABEL org.opencontainers.image.version="${IMAGE_TAG}"
-LABEL org.opencontainers.image.revision="${IMAGE_TAG}"
+LABEL org.opencontainers.image.version="${VERSION}"
+LABEL org.opencontainers.image.revision="${REVISION}"
 LABEL org.opencontainers.image.vendor="Algolia"
 LABEL org.opencontainers.image.title="instant-search-demo"
 LABEL org.opencontainers.image.description="Instant-Search demo"
