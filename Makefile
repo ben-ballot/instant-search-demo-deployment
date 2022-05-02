@@ -48,8 +48,20 @@ build-minikube-dev: build-minikube
 push: build
 	docker push $(IMAGE):$(APP_VERSION)
 
-run-dev: build-dev"instant-search-demo"
-
+run-dev: build-dev
 	docker run --rm -p 3000:3000 $(IMAGE):$(IMAGE_TAG)
+	@echo "Connect on http://localhost:3000"
 
-.PHONY: build build-dev run-dev
+run-minikube-dev: build-minikube-dev
+	minikube kubectl -- apply -k  $(PROJECTPATH)/k8s/base
+	@echo "Connect on http://$(shell minikube ip):30000"
+
+clean-dev:
+	minikube kubectl -- delete deployment $(IMAGE)-deployment
+
+
+update:
+	@git submodule update --init --recursive
+
+.PHONY: build build-dev build-minikube build-minikube-dev push run-dev run-minikube-dev
+.PHONY: update
