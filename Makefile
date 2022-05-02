@@ -1,15 +1,19 @@
 PROJECTPATH = $(dir $(realpath $(firstword $(MAKEFILE_LIST))))
 
-VENV := .venv
-VENV_PIP := $(PROJECTPATH)/$(VENV)/bin/pip
-VENV_PYTHON := $(PROJECTPATH)/$(VENV)/bin/python3
-
-
-IMAGE := instant-search-demo
+APP ?= instant-search-demo
+IMAGE ?= instant-search-demo
 BASE_IMAGE ?= node
 BASE_TAG ?= 9.11
 APP_REVISION ?= $(shell cd $(PROJECTPATH) && git rev-parse @:./instant-search-demo)
 APP_VERSION ?= $(shell cd $(PROJECTPATH) && git describe --tags $$(git rev-list --tags --max-count=1))
+
+TARGET_ENV := dev staging prod
+TARGET_BUILD = $(addprefix build-, $(TARGET_ENV))
+TARGET_BUILD_MINIKUBE = $(addprefix build-minikube-, $(TARGET_ENV))
+TARGET_DEPLOY = $(addprefix deploy-, $(TARGET_ENV))
+TARGET_DEPLOY_MINIKUBE = $(addprefix deploy-minikube-, $(TARGET_ENV))
+TARGET_CLEAN = $(addprefix clean-, $(TARGET_ENV))
+TARGET_CLEAN_MINIKUBE = $(addprefix clean-minikube-, $(TARGET_ENV))
 
 DATE ?= $(shell date "+%F-%H%M%S")
 
@@ -24,6 +28,8 @@ build:
 		--file Dockerfile \
 		$(PROJECTPATH)
 
+$(TARGET_BUILD): build-%: build
+
 build-minikube:
 	minikube image build \
 		--build-opt="build-arg=BASE_IMAGE=$(BASE_IMAGE)" \
@@ -35,33 +41,32 @@ build-minikube:
 		--file Dockerfile \
 		$(PROJECTPATH)
 
-build-dev: DATE=dev
-build-dev: APP_REVISION=dev
-build-dev: APP_VERSION=dev
-build-dev: build
+$(TARGET_BUILD_MINIKUBE): build-minikube-%: build-minikube
 
-build-minikube-dev: DATE=dev
-build-minikube-dev: APP_REVISION=dev
-build-minikube-dev: APP_VERSION=dev
-build-minikube-dev: build-minikube
-
-push: build
+push:
 	docker push $(IMAGE):$(APP_VERSION)
 
-run-dev: build-dev
-	docker run --rm -p 3000:3000 $(IMAGE):$(IMAGE_TAG)
-	@echo "Connect on http://localhost:3000"
+$(TARGET_DEPLOY): deploy-%: build-% push
+	kubectl apply -k  $(PROJECTPATH)/k8s/overlays/$*
+	@echo "$(IMAGE) Deployed as a nodePort service on port 30000"
 
-run-minikube-dev: build-minikube-dev
-	minikube kubectl -- apply -k  $(PROJECTPATH)/k8s/base
+$(TARGET_DEPLOY_MINIKUBE): deploy-minikube-%: build-minikube-%
+	minikube kubectl -- apply -k  $(PROJECTPATH)/k8s/overlays/$*
 	@echo "Connect on http://$(shell minikube ip):30000"
 
-clean-dev:
-	minikube kubectl -- delete deployment $(IMAGE)-deployment
+$(TARGET_CLEAN): clean-%:
+	kubectl delete deployment $(APP)-deployment
+	kubectl delete svc $(APP)
 
+$(TARGET_CLEAN_MINIKUBE): clean-minikube-%:
+	minikube kubectl -- delete deployment $(APP)-deployment
+	minikube kubectl -- delete svc $(APP)
 
-update:
+update-git:
 	@git submodule update --init --recursive
 
-.PHONY: build build-dev build-minikube build-minikube-dev push run-dev run-minikube-dev
-.PHONY: update
+update: update-git build
+
+
+.PHONY: $(TARGET_CLEAN_MINIKUBE) $(TARGET_BUILD) $(TARGET_DEPLOY) $(TARGET_BUILD_MINIKUBE) $(TARGET_DEPLOY_MINIKUBE)
+.PHONY: build deploy push update
